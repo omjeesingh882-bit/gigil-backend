@@ -92,4 +92,30 @@ router.post('/login', async (req, res) => {
     }
 });
 
+// Forgot Password
+router.post('/forgot-password', async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        const user = users.find(u => u.email === email);
+        if (!user) {
+            return res.status(400).json({ msg: 'User with this email does not exist' });
+        }
+
+        // Generate a temporary new password
+        const tempPassword = Math.random().toString(36).slice(-8);
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(tempPassword, salt);
+
+        // Update in-memory user
+        user.password = hashedPassword;
+
+        // In a real app we'd email this, but for this demo we'll return it directly
+        res.json({ msg: 'Password reset successful', tempPassword });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
 module.exports = router;
