@@ -2,41 +2,50 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+
+// In-memory user storage
+const users = [];
 
 // Register
 router.post('/register', async (req, res) => {
     try {
         const { username, email, password } = req.body;
-        let user = await User.findOne({ email });
-        if (user) {
+
+        // Check if user exists
+        const existingUser = users.find(u => u.email === email);
+        if (existingUser) {
             return res.status(400).json({ msg: 'User already exists' });
         }
 
-        user = new User({
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        const newUser = {
+            id: Date.now().toString(),
             username,
             email,
-            password
-        });
+            password: hashedPassword,
+            avatar: '',
+            bio: ''
+        };
 
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(password, salt);
-        await user.save();
+        users.push(newUser);
 
         const payload = {
             user: {
-                id: user.id,
-                username: user.username
+                id: newUser.id,
+                username: newUser.username
             }
         };
 
+        const secret = process.env.JWT_SECRET || 'fallback_secret_key';
         jwt.sign(
             payload,
-            process.env.JWT_SECRET,
+            secret,
             { expiresIn: '30d' },
             (err, token) => {
                 if (err) throw err;
-                res.json({ token, user: { id: user.id, username: user.username } });
+                res.json({ token, user: { id: newUser.id, username: newUser.username } });
             }
         );
     } catch (err) {
@@ -50,7 +59,7 @@ router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        let user = await User.findOne({ email });
+        const user = users.find(u => u.email === email);
         if (!user) {
             return res.status(400).json({ msg: 'Invalid Credentials' });
         }
@@ -67,9 +76,10 @@ router.post('/login', async (req, res) => {
             }
         };
 
+        const secret = process.env.JWT_SECRET || 'fallback_secret_key';
         jwt.sign(
             payload,
-            process.env.JWT_SECRET,
+            secret,
             { expiresIn: '30d' },
             (err, token) => {
                 if (err) throw err;

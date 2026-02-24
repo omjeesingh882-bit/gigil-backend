@@ -2,7 +2,6 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
-const mongoose = require('mongoose');
 const setupSocket = require('./socket/socketManager');
 
 const app = express();
@@ -19,15 +18,7 @@ setupSocket(server);
 const authRoutes = require('./routes/auth');
 app.use('/api/auth', authRoutes);
 
-// Database Connection
-mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-}).then(() => {
-    console.log('Connected to MongoDB');
-}).catch((err) => {
-    console.error('MongoDB connection error:', err);
-});
+// Database removed - using in-memory storage for simplicity
 
 // Start Server
 const PORT = process.env.PORT || 5000;
